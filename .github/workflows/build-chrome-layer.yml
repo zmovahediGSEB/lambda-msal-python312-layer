@@ -8,35 +8,40 @@ on:
 jobs:
   build-layer:
     runs-on: ubuntu-latest
+    timeout-minutes: 30  # give enough time for large downloads
 
     steps:
-      - name: Checkout repo
+      # Step 1: Checkout the repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Step 2: Build the Lambda Layer
       - name: Build Chromium + ChromeDriver layer
         run: |
           mkdir -p layer/bin
 
-          # Download newest headless Chrome
-          curl -Lo /tmp/chrome-linux.zip "https://storage.googleapis.com/chrome-for-testing/latest/linux64/chrome-linux.zip"
-          unzip /tmp/chrome-linux.zip -d layer/bin
+          # Download Lambda-optimized headless Chromium
+          curl -Lo /tmp/headless-chromium.zip \
+            https://github.com/adieuadieu/serverless-chrome/releases/download/v1.0.0-55/stable-headless-chromium-amazonlinux-2.zip
 
-          # Download newest ChromeDriver matching Chrome version
-          # Extract version number from Chrome
-          CHROME_VER=$(unzip -p /tmp/chrome-linux.zip chrome-linux/ProductVersion)
-          CHROMEDRIVER_URL="https://chromedriver.storage.googleapis.com/${CHROME_VER}/chromedriver_linux64.zip"
-          curl -Lo /tmp/chromedriver.zip "$CHROMEDRIVER_URL"
-          unzip /tmp/chromedriver.zip -d layer/bin
+          unzip -q /tmp/headless-chromium.zip -d layer/bin
 
-          chmod +x layer/bin/chrome-linux/chrome
+          # Download ChromeDriver (Linux 64-bit, compatible with the above Chromium)
+          curl -Lo /tmp/chromedriver.zip \
+            https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip
+          unzip -q /tmp/chromedriver.zip -d layer/bin
+
+          # Make binaries executable
+          chmod +x layer/bin/headless-chromium
           chmod +x layer/bin/chromedriver
 
-          # Create zip
+          # Package layer as zip
           cd layer
           zip -r ../chrome-layer.zip .
           cd ..
 
-      - name: Upload artifact
+      # Step 3: Upload the zip artifact
+      - name: Upload Lambda layer artifact
         uses: actions/upload-artifact@v4
         with:
           name: chrome-layer
