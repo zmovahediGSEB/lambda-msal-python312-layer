@@ -1,0 +1,44 @@
+name: Build Lambda Chrome Layer
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-layer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Lambda Layer
+        run: |
+          # Make layer directory
+          mkdir -p layer/bin
+
+          # Download headless Chromium for Amazon Linux 2
+          wget -O layer/bin/headless-chromium \
+          https://github.com/adieuadieu/serverless-chrome/releases/download/v1.0.0-55/stable-headless-chromium-amazonlinux-2.zip
+          
+          unzip layer/bin/headless-chromium -d layer/bin
+          
+          # Download Chromedriver
+          wget -O chromedriver.zip \
+          https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip
+          
+          unzip chromedriver.zip -d layer/bin
+
+          # Make executables
+          chmod +x layer/bin/headless-chromium
+          chmod +x layer/bin/chromedriver
+
+          # Package Lambda layer
+          cd layer
+          zip -r ../chrome-layer.zip .
+          cd ..
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: chrome-layer
+          path: chrome-layer.zip
