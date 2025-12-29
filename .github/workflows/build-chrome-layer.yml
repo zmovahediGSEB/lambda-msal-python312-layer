@@ -1,4 +1,4 @@
-name: Download Prebuilt Lambda Chrome Layer
+name: Build Valid Lambda Chrome Layer
 
 on:
   push:
@@ -6,24 +6,41 @@ on:
       - main
 
 jobs:
-  download-layer:
+  build-layer:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 1: Download prebuilt Lambda-compatible Chrome layer
-      - name: Download prebuilt Chrome layer
+      - name: Download headless-chromium and chromedriver
         run: |
-          mkdir -p layer
-          # Example: Serverless Chrome Python 3.12 prebuilt layer (x86_64)
-          curl -Lo layer/chrome-layer.zip \
-            https://github.com/shelfio/chrome-aws-lambda-layer/releases/download/v111.0.5563.64-1.0.0/python3.12-layer.zip
+          mkdir -p layer/bin
 
-      # Step 2: Upload as GitHub artifact
+          # Download Lambda-optimized headless Chromium
+          curl -Lo layer/bin/headless-chromium \
+            https://github.com/adieuadieu/serverless-chrome/releases/download/v1.0.0-55/headless-chromium-amazonlinux-2.zip
+          
+          # Unzip into bin/
+          unzip -q layer/bin/headless-chromium -d layer/bin/
+          rm layer/bin/headless-chromium  # remove original zip
+
+          # Download matching ChromeDriver
+          curl -Lo /tmp/chromedriver.zip \
+            https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip
+          unzip -q /tmp/chromedriver.zip -d layer/bin/
+
+          # Make binaries executable
+          chmod +x layer/bin/headless-chromium
+          chmod +x layer/bin/chromedriver
+
+          # Package layer
+          cd layer
+          zip -r ../chrome-layer.zip .
+          cd ..
+
       - name: Upload Lambda layer artifact
         uses: actions/upload-artifact@v4
         with:
           name: chrome-layer
-          path: layer/chrome-layer.zip
+          path: chrome-layer.zip
