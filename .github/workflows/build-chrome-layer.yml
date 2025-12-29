@@ -8,37 +8,36 @@ on:
 jobs:
   build-layer:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Build Lambda Layer
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Build Chromium + ChromeDriver layer
         run: |
-          # Make layer directory
           mkdir -p layer/bin
 
-          # Download headless Chromium for Amazon Linux 2
-          wget -O layer/bin/headless-chromium \
-          https://github.com/adieuadieu/serverless-chrome/releases/download/v1.0.0-55/stable-headless-chromium-amazonlinux-2.zip
-          
-          unzip layer/bin/headless-chromium -d layer/bin
-          
-          # Download Chromedriver
-          wget -O chromedriver.zip \
-          https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip
-          
-          unzip chromedriver.zip -d layer/bin
+          # Download newest headless Chrome
+          curl -Lo /tmp/chrome-linux.zip "https://storage.googleapis.com/chrome-for-testing/latest/linux64/chrome-linux.zip"
+          unzip /tmp/chrome-linux.zip -d layer/bin
 
-          # Make executables
-          chmod +x layer/bin/headless-chromium
+          # Download newest ChromeDriver matching Chrome version
+          # Extract version number from Chrome
+          CHROME_VER=$(unzip -p /tmp/chrome-linux.zip chrome-linux/ProductVersion)
+          CHROMEDRIVER_URL="https://chromedriver.storage.googleapis.com/${CHROME_VER}/chromedriver_linux64.zip"
+          curl -Lo /tmp/chromedriver.zip "$CHROMEDRIVER_URL"
+          unzip /tmp/chromedriver.zip -d layer/bin
+
+          chmod +x layer/bin/chrome-linux/chrome
           chmod +x layer/bin/chromedriver
 
-          # Package Lambda layer
+          # Create zip
           cd layer
           zip -r ../chrome-layer.zip .
           cd ..
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
           name: chrome-layer
           path: chrome-layer.zip
