@@ -1,4 +1,4 @@
-name: Build Lambda Layer (Python 3.12 with MSAL)
+name: Build Lambda Layer (Python 3.12 MSAL + Latest Dependencies)
 
 on:
   workflow_dispatch:
@@ -11,24 +11,37 @@ jobs:
       image: amazonlinux:2023
 
     steps:
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           dnf install -y python3.12 python3.12-pip zip
 
-      - name: Prepare layer folder
+      - name: Prepare layer directory and install packages
         run: |
           mkdir -p layer/python
           cd layer/python
+
+          # Install MSAL (latest python3.12-compatible)
           pip3.12 install msal -t .
-          pip3.12 install cryptography requests PyJWT -t .
+
+          # Install latest compatible dependencies explicitly referenced in your old layer
+          pip3.12 install cryptography -t .
+          pip3.12 install cffi -t .
+          pip3.12 install charset-normalizer -t .
+          pip3.12 install PyJWT -t .
+          pip3.12 install requests -t .
+          pip3.12 install urllib3 -t .
+          pip3.12 install idna -t .
+          pip3.12 install certifi -t .
+          pip3.12 install pycparser -t .
+          pip3.12 install setuptools -t .
 
       - name: Zip layer
         run: |
           cd layer
-          zip -r msal_layer_python312.zip python
+          zip -r msal_python312_layer.zip python
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: msal_layer_python312
-          path: layer/msal_layer_python312.zip
+          name: msal_python312_layer
+          path: layer/msal_python312_layer.zip
